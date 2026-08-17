@@ -2,6 +2,7 @@ services:
   - type: web
     name: finsight-backend
     env: node
+    plan: free
     rootDir: backend
     buildCommand: npm install && npx prisma generate
     startCommand: npx prisma migrate deploy && node server.js
@@ -30,6 +31,7 @@ services:
   - type: web
     name: finsight-analytics
     env: python
+    plan: free
     rootDir: analytics
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -41,4 +43,4 @@ databases:
   - name: finsight-db
     databaseName: finsight
     user: finsight_user
-    plan: starter
+    plan: free
