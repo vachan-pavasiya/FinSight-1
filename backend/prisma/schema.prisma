@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  email               String             @unique
+  password            String?
+  name                String
+  role                String             @default("user")
+  isEmailVerified     Boolean            @default(false)
+  googleId            String?            @unique
+  githubId            String?            @unique
+  facebookId          String?            @unique
+  provider            String             @default("local")
+  profilePicture      String?
+  emailVerifyToken    String?
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+  refreshTokens       RefreshToken[]
+  expenses            Expense[]
+  budgets             Budget[]
+  goals               Goal[]
+  notifications       Notification[]
+  uploadedFiles       UploadedFile[]
+  reports             Report[]
+  recurringIncomes    RecurringIncome[]
+  loans               Loan[]
+  billsSubscriptions  BillSubscription[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  color    String    @default("#6366f1")
+  icon     String    @default("tag")
+  expenses Expense[]
+  budgets  Budget[]
+}
+
+model Expense {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id])
+  merchant       String
+  amount         Float
+  date           DateTime
+  description    String?
+  paymentMode    String        @default("card")
+  isAnomalous    Boolean       @default(false)
+  uploadedFileId String?
+  uploadedFile   UploadedFile? @relation(fields: [uploadedFileId], references: [id])
+  createdAt      DateTime      @default(now())
+
+  @@index([userId])
+  @@index([date])
+  @@index([categoryId])
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  amount     Float
+  period     String   @default("monthly")
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, categoryId, month, year])
+}
+
+model Goal {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model RecurringIncome {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source      String   // Salary, Rent, Freelance, Investment, Other
+  amount      Float
+  frequency   String   @default("monthly") // monthly, yearly, weekly
+  payoutDay   Int      @default(1) // 1-31
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Loan {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String   // e.g. "HDFC Home Loan", "Car Loan - SBI", "iPhone 15 EMI"
+  loanType        String   @default("home") // home, car, mobile, personal, education, electronics
+  principalAmount Float    // Total loan / purchase amount
+  emiAmount       Float    // Monthly EMI payable
+  interestRate    Float    @default(0) // Annual interest rate %
+  tenureMonths    Int      // Total number of EMI installments
+  emisPaid        Int      @default(0) // Number of EMIs paid so far
+  dueDate         Int      @default(10) // Day of month due (1-31)
+  startDate       DateTime @default(now())
+  status          String   @default("active") // active, closed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model BillSubscription {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String   // e.g. "Jio Mobile Plan", "Airtel Broadband", "Netflix 4K", "Electricity Bill (BESCOM)"
+  categoryType    String   @default("broadband") // mobile, broadband, ott, electricity, water, gas, utility
+  provider        String?  // Jio, Airtel, Netflix, Spotify, BESCOM, IGL
+  amount          Float    // Monthly plan amount
+  isAutoRecurring Boolean  @default(true) // Auto-adjusted on monthly basis
+  frequency       String   @default("monthly") // monthly, quarterly, yearly
+  dueDay          Int      @default(5) // Day of month due (1-31)
+  paymentMode     String   @default("upi") // card, upi, netbanking, auto_debit
+  status          String   @default("active") // active, paused
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model UploadedFile {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename     String
+  originalName String
+  mimetype     String
+  size         Int
+  path         String
+  status       String    @default("pending")
+  rowCount     Int       @default(0)
+  expenses     Expense[]
+  createdAt    DateTime  @default(now())
+}
+
+model Report {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename  String
+  period    String
+  startDate DateTime
+  endDate   DateTime
+  size      Int      @default(0)
+  createdAt DateTime @default(now())
+}

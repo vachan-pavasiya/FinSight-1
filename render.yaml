@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: finsight-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx prisma migrate deploy && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finsight-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false # Set in Render Dashboard: e.g. https://finsight-frontend.vercel.app
+      - key: ANALYTICS_URL
+        sync: false # Set in Render Dashboard or auto-wired from finsight-analytics internal URL
+
+  - type: web
+    name: finsight-analytics
+    env: python
+    rootDir: analytics
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false # Set in Render Dashboard: e.g. https://finsight-backend.onrender.com
+
+databases:
+  - name: finsight-db
+    databaseName: finsight
+    user: finsight_user
+    plan: starter
